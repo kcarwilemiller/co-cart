@@ -65,6 +65,15 @@ class WC_REST_Cart_Controller {
 			'callback' => array( $this, 'get_shipping_methods' ),
 		));
 
+		// Set shipping method for cart - wc/v2/cart/shipping-method (POST)
+		register_rest_route( $this->namespace, '/' . $this->rest_base  . '/shipping-method', array(
+			'methods'  => WP_REST_Server::CREATABLE,
+			'callback' => array( $this, 'set_shipping_method' ),
+			'args'     => array(
+				'method_id' => array()
+			)
+		));
+
 		// Get Cart Totals - wc/v2/cart/totals (GET)
 		register_rest_route( $this->namespace, '/' . $this->rest_base  . '/totals', array(
 			'methods'  => WP_REST_Server::READABLE,
@@ -214,9 +223,9 @@ class WC_REST_Cart_Controller {
 		$methods = $cart->calculate_shipping();
 		// $methods = WC()->shipping->get_shipping_methods();
 		// $packages = $cart->get_shipping_packages();
-		
+
 		$packages = WC()->shipping->get_packages();
-		$chosen_method = WC()->session->get('chosen_shipping_methods');
+		$chosen_method = WC()->session->get('chosen_shipping_methods')[0];
 
 		$default_package = $packages[0];
 		$methods = $default_package['rates'];
@@ -225,16 +234,40 @@ class WC_REST_Cart_Controller {
 		foreach ( $methods as $key => $method ) {
 			$method_data = new stdClass();
 
-			$method_data->key = $key;
+			$method_data->id = $key;
 			$method_data->method_id = $method->get_method_id();
 			$method_data->label = $method->get_label();
 			$method_data->cost = $method->cost;
 			$method_data->html = wc_cart_totals_shipping_method_label($method);
+			$method_data->selected = ($chosen_method === $key);
 
 			$available_methods[] = $method_data;
 		}
 
 		return new WP_REST_Response( $available_methods, 200 );
+	}
+
+	/**
+	 * Set shipping method for the current cart.
+	 *
+	 * @access  public
+	 * @since   1.0.0
+	 * @version 1.0.6
+	 * @param   array $data
+	 * @return  WP_REST_Response
+	 */
+	public function set_shipping_method($data = array()) {
+		if (!isset($data['method_id'])) {
+			return new WP_REST_Response(array(), 200);
+		}
+		if ($this->get_cart_contents_count( array( 'return' => 'numeric' ) ) <= 0) {
+			return new WP_REST_Response(array(), 200);
+		}
+
+		$method_id = $data['method_id'];
+		WC()->session->set('chosen_shipping_methods', array($method_id));
+
+		return new WP_REST_Response( $method_id, 200 );
 	}
 
 	/**
