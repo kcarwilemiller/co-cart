@@ -59,13 +59,19 @@ class WC_REST_Cart_Controller {
 			),
 		));
 
+		// Get shipping methods for cart - wc/v2/cart/shipping-methods (GET)
+		register_rest_route( $this->namespace, '/' . $this->rest_base  . '/shipping-methods', array(
+			'methods'  => WP_REST_Server::READABLE,
+			'callback' => array( $this, 'get_shipping_methods' ),
+		));
+
 		// Get Cart Totals - wc/v2/cart/totals (GET)
 		register_rest_route( $this->namespace, '/' . $this->rest_base  . '/totals', array(
 			'methods'  => WP_REST_Server::READABLE,
 			'callback' => array( $this, 'get_totals' ),
 		));
 
-		// View Cart - wc/v2/cart/clear (POST)
+		// Clear Cart - wc/v2/cart/clear (POST)
 		register_rest_route( $this->namespace, '/' . $this->rest_base  . '/clear', array(
 			'methods'  => WP_REST_Server::CREATABLE,
 			'callback' => array( $this, 'clear_cart' ),
@@ -147,7 +153,7 @@ class WC_REST_Cart_Controller {
 	 * @access  public
 	 * @since   1.0.0
 	 * @version 1.0.6
-	 * @param   array $data
+	 * @param   $request
 	 * @return  WP_REST_Response
 	 */
 	public function get_cart($request) {
@@ -182,6 +188,54 @@ class WC_REST_Cart_Controller {
 
 		return new WP_REST_Response( $cart, 200 );
 	} // END get_cart()
+
+	/**
+	 * Get shipping methods for the current cart.
+	 *
+	 * @access  public
+	 * @since   1.0.0
+	 * @version 1.0.6
+	 * @param   $request
+	 * @return  WP_REST_Response
+	 */
+	public function get_shipping_methods($request) {
+		$cart = WC()->cart;
+
+		if ( $this->get_cart_contents_count( array( 'return' => 'numeric' ) ) <= 0 ) {
+			return new WP_REST_Response(array(), 200);
+		}
+
+		$shipping_methods = [];
+
+		if (!$cart->show_shipping()) {
+			return new WP_REST_Response($shipping_methods, 200);
+		}
+
+		$methods = $cart->calculate_shipping();
+		// $methods = WC()->shipping->get_shipping_methods();
+		// $packages = $cart->get_shipping_packages();
+		
+		$packages = WC()->shipping->get_packages();
+		$chosen_method = WC()->session->get('chosen_shipping_methods');
+
+		$default_package = $packages[0];
+		$methods = $default_package['rates'];
+		$available_methods = [];
+
+		foreach ( $methods as $key => $method ) {
+			$method_data = new stdClass();
+
+			$method_data->key = $key;
+			$method_data->method_id = $method->get_method_id();
+			$method_data->label = $method->get_label();
+			$method_data->cost = $method->cost;
+			$method_data->html = wc_cart_totals_shipping_method_label($method);
+
+			$available_methods[] = $method_data;
+		}
+
+		return new WP_REST_Response( $available_methods, 200 );
+	}
 
 	/**
 	 * Get cart contents count.
