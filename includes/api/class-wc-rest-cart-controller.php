@@ -45,12 +45,7 @@ class WC_REST_Cart_Controller {
 		// View Cart - wc/v2/cart (GET)
 		register_rest_route( $this->namespace, '/' . $this->rest_base, array(
 			'methods'  => WP_REST_Server::READABLE,
-			'callback' => array( $this, 'get_cart' ),
-			'args'     => array(
-				'thumb' => array(
-					'default' => null
-				),
-			),
+			'callback' => array( $this, 'get_cart' )
 		));
 
 		// Count Items in Cart - wc/v2/cart/count-items (GET)
@@ -155,20 +150,24 @@ class WC_REST_Cart_Controller {
 	 * @param   array $data
 	 * @return  WP_REST_Response
 	 */
-	public function get_cart( $data = array() ) {
+	public function get_cart($request) {
 		$cart = WC()->cart->get_cart();
 
 		if ( $this->get_cart_contents_count( array( 'return' => 'numeric' ) ) <= 0 ) {
 			return new WP_REST_Response( array(), 200 );
 		}
 
-		$show_thumb = ! empty( $data['thumb'] ) ? $data['thumb'] : false;
+		$thumb = $request->get_param('thumb');
+		$show_thumb = !empty($thumb) ? $thumb : false;
 
 		foreach ( $cart as $item_key => $cart_item ) {
 			$_product = apply_filters( 'wc_cart_rest_api_cart_item_product', $cart_item['data'], $cart_item, $item_key );
 
-			// Adds the product name as a new variable.
-			$cart[$item_key]['product_name'] = $_product->get_name();
+			// Add the product data to the line item
+			$product = new WC_Product($_product->get_id());
+			$controller = new WC_REST_Products_Controller();
+			$page_view = $controller->prepare_item_for_response($product, $request);
+			$cart[$item_key]['product'] = $page_view->data;
 
 			// If main product thumbnail is requested then add it to each item in cart.
 			if ( $show_thumb ) {
@@ -269,9 +268,9 @@ class WC_REST_Cart_Controller {
 	} // END validate_product()
 
 	/**
-	 * Checks if the product in the cart has enough stock 
+	 * Checks if the product in the cart has enough stock
 	 * before updating the quantity.
-	 * 
+	 *
 	 * @access protected
 	 * @since  1.0.6
 	 * @param  array  $current_data
