@@ -234,8 +234,8 @@ class WC_REST_Cart_Controller {
 		foreach ( $methods as $key => $method ) {
 			$method_data = new stdClass();
 
-			$method_data->id = $key;
-			$method_data->method_id = $method->get_method_id();
+			$method_data->method_id = $key;
+			$method_data->method_type = $method->get_method_id();
 			$method_data->label = $method->get_label();
 			$method_data->cost = $method->cost;
 			$method_data->html = wc_cart_totals_shipping_method_label($method);
