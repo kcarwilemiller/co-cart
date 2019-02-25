@@ -231,17 +231,20 @@ class WC_REST_Cart_Controller {
 		$methods = $default_package['rates'];
 		$available_methods = [];
 
-		foreach ( $methods as $key => $method ) {
-			$method_data = new stdClass();
 
-			$method_data->method_id = $key;
-			$method_data->method_type = $method->get_method_id();
-			$method_data->label = $method->get_label();
-			$method_data->cost = $method->cost;
-			$method_data->html = wc_cart_totals_shipping_method_label($method);
-			$method_data->selected = ($chosen_method === $key);
+		if(!is_null($methods)) {
+			foreach ( $methods as $key => $method ) {
+				$method_data = new stdClass();
 
-			$available_methods[] = $method_data;
+				$method_data->method_id = $key;
+				$method_data->method_type = $method->get_method_id();
+				$method_data->label = $method->get_label();
+				$method_data->cost = $method->cost;
+				$method_data->html = wc_cart_totals_shipping_method_label($method);
+				$method_data->selected = ($chosen_method === $key);
+
+				$available_methods[] = $method_data;
+			}
 		}
 
 		return new WP_REST_Response( $available_methods, 200 );
