@@ -27,7 +27,7 @@ class WC_REST_Cart_Controller {
 	 *
 	 * @var string
 	 */
-	protected $namespace = 'wc/v2';
+	protected $namespace = 'wc/v3';
 
 	/**
 	 * Route base.
