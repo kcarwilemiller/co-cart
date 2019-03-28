@@ -1,8 +1,8 @@
 {
-  "name": "redandbluefi/co-cart",
+  "name": "kcarwilemiller/co-cart",
   "type": "wordpress-plugin",
   "description": "Cart REST API for WooCommerce - fork of co-cart/co-cart",
-  "homepage": "https://github.com/redandbluefi/co-cart",
+  "homepage": "https://github.com/kcarwilemiller/co-cart",
   "keywords": [
     "wordpress",
     "plugin"
