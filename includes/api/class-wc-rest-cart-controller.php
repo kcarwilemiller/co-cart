@@ -74,6 +74,21 @@ class WC_REST_Cart_Controller {
 			)
 		));
 
+		// Get shipping methods for cart - wc/v2/cart/customer (GET)
+		register_rest_route( $this->namespace, '/' . $this->rest_base  . '/customer', array(
+			'methods'  => WP_REST_Server::READABLE,
+			'callback' => array( $this, 'get_customer' ),
+		));
+		
+		// Set shipping method for cart - wc/v2/cart/customer (POST)
+		register_rest_route( $this->namespace, '/' . $this->rest_base  . '/customer', array(
+			'methods'  => WP_REST_Server::CREATABLE,
+			'callback' => array( $this, 'set_customer_info' ),
+			'args'     => array(
+				'first_name' => array(),
+			)
+		));
+		
 		// Get Cart Totals - wc/v2/cart/totals (GET)
 		register_rest_route( $this->namespace, '/' . $this->rest_base  . '/totals', array(
 			'methods'  => WP_REST_Server::READABLE,
@@ -211,7 +226,7 @@ class WC_REST_Cart_Controller {
 		$cart = WC()->cart;
 
 		if ( $this->get_cart_contents_count( array( 'return' => 'numeric' ) ) <= 0 ) {
-			return new WP_REST_Response(array(), 200);
+			return new WP_REST_Response(array($cart->get_cart()), 200);
 		}
 
 		$shipping_methods = [];
@@ -248,6 +263,59 @@ class WC_REST_Cart_Controller {
 		}
 
 		return new WP_REST_Response( $available_methods, 200 );
+	}
+
+	/**
+	 * Get the customer details
+	 *
+	 * @access  public
+	 * @since   1.0.0
+	 * @version 1.0.6
+	 * @param   $request
+	 * @return  WP_REST_Response
+	 */
+	public function get_customer($request) {
+		$customer = WC()->customer;
+		
+		return new WP_REST_Response([ 
+			'first_name' => $customer->get_first_name(),
+			'last_name' => $customer->get_last_name(),
+			'email' => $customer->get_email(),
+			'billing' => $customer->get_billing(),
+			'shipping' => $customer->get_shipping(),
+			'user_id' => get_current_user_id() 
+		], 200 );
+	}
+	
+	/**
+	 * Get the customer details
+	 *
+	 * @access  public
+	 * @since   1.0.0
+	 * @version 1.0.6
+	 * @param   array $request
+	 * @return  WP_REST_Response
+	 */
+	public function set_customer_info( $request ) {
+		$customer = WC()->customer;
+		$data = $request->get_params();
+		
+		foreach([ 
+			'first_name', 'last_name', 'email',
+			'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address', 'billing_address_2',
+			'billing_city', 'billing_state', 'billing_postcode', 'billing_country', 'billing_email', 'billing_phone',
+			'shipping_first_name', 'shipping_last_name', 'shipping_company', 'shipping_address', 'shipping_address_2',
+			'shipping_city', 'shipping_state', 'shipping_postcode', 'shipping_country',
+			] as $prop ) {
+				
+			if ( array_key_exists( $prop, $data ) ) {
+				if ( is_callable( array( $customer, 'set_' . $prop ) ) ) {
+					call_user_func( array( $customer, 'set_' . $prop ), $data[ $prop ] );
+				}
+			}
+		}
+		
+		return $this->get_customer(NULL);
 	}
 
 	/**
@@ -484,7 +552,7 @@ class WC_REST_Cart_Controller {
 			if ( WC()->cart->remove_cart_item( $cart_item_key ) ) {
 				return new WP_REST_Response( __( 'Item has been removed from cart.', 'cart-rest-api-for-woocommerce' ), 200 );
 			} else {
-				return new WP_ERROR( 'wc_cart_rest_can_not_remove_item', __( 'Unable to remove item from cart.', 'cart-rest-api-for-woocommerce' ), array( 'status' => 500 ) );
+				return new WP_ERROR( 'wc_cart_rest_can_not_remove_item', __( 'Unable to remove item from cart. ' . $cart_item_key, 'cart-rest-api-for-woocommerce' ), array( 'status' => 500 ) );
 			}
 		} else {
 			return new WP_ERROR( 'wc_cart_rest_cart_item_key_required', __( 'Cart item key is required!', 'cart-rest-api-for-woocommerce' ), array( 'status' => 500 ) );
@@ -588,6 +656,7 @@ class WC_REST_Cart_Controller {
 	 * @return array
 	 */
 	public function get_totals() {
+		WC()->cart->calculate_totals();
 		$totals = WC()->cart->get_totals();
 
 		return $totals;
